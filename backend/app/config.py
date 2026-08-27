@@ -8,7 +8,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 class Settings(BaseSettings):
     APP_NAME: str = "DAS-SentinelAgent (安恒星巡 - 网站安全智能巡检与敏感信息防泄露智能体)"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = "1.1.0"
     API_V1_STR: str = "/api/v1"
     
     # 存储与数据库
