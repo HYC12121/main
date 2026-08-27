@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAS-SentinelAgent (安恒星巡) - 网站安全智能巡检与敏感信息防泄露智能体系统</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=20260827_2">
+</head>
+<body>
+    <!-- 左侧主导航栏 -->
+    <aside class="sidebar">
+        <div>
+            <div class="brand">
+                <div class="brand-logo">🛡️</div>
+                <div class="brand-text">
+                    <h1>DAS-SentinelAgent</h1>
+                    <span>安恒星巡 · 安全巡检智能体</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <div class="nav-item active" data-tab="dashboard">
+                    <span>📊</span> <span>安全总览</span>
+                </div>
+                <div class="nav-item" data-tab="agent">
+                    <span>🧠</span> <span>智能助手 (对话)</span>
+                </div>
+                <div class="nav-item" data-tab="tasks">
+                    <span>📋</span> <span>巡检任务 (新建/定时)</span>
+                </div>
+                <div class="nav-item" data-tab="findings">
+                    <span>🐞</span> <span>问题清单 (详情/复测)</span>
+                </div>
+                <div class="nav-item" data-tab="baseline">
+                    <span>⚖️</span> <span>历史对比 (两次比对)</span>
+                </div>
+                <div class="nav-item" data-tab="rules">
+                    <span>🔒</span> <span>隐私规则 (防泄露测试)</span>
+                </div>
+                <div class="nav-item" data-tab="hengnao">
+                    <span>🤖</span> <span>安恒恒脑 (平台接入)</span>
+                </div>
+                <div class="nav-item" data-tab="audit">
+                    <span>📜</span> <span>操作记录 (安全留痕)</span>
+                </div>
+                <div class="nav-item" data-tab="msgbox_tool" style="margin-top: 8px; border-top: 1px dashed #cbd5e1; padding-top: 10px; background: rgba(2, 132, 199, 0.05);">
+                    <span style="font-size: 15px;">🧰</span> <span style="font-weight: 700; color: #0369a1;">MsgBox 开发者工具</span>
+                </div>
+            </nav>
+        </div>
+
+        <div class="sidebar-footer">
+            <p>第九届浙江省大学生网安竞赛</p>
+            <p style="margin-top:2px; font-weight:600; color:#0284c7;">安恒信息企业命题 2 · 正式可用</p>
+        </div>
+    </aside>
+
+    <!-- 右侧主界面 -->
+    <div class="main-wrapper">
+        <header class="topbar">
+            <div class="topbar-title">
+                <h2 id="tab-title">安全总览与快速巡检</h2>
+            </div>
+            <div class="topbar-actions">
+                <div class="badge-pill" id="token-usage-badge" style="background:#f0fdf4; color:#15803d; border-color:#bbf7d0; font-family:monospace; font-size:12px;" title="Antigravity 智能体项目累计消耗估算">
+                    ⚡ 消耗: <span id="topbar-token-count" style="font-weight:700;">4.62M Tokens</span> (约 ¥4.19)
+                </div>
+                <div class="badge-pill" style="background:#e0f2fe; color:#0369a1; border-color:#bae6fd;">🟢 巡检智能体就绪</div>
+                <button class="btn btn-primary" onclick="window.open('/docs')">📚 API 接口文档</button>
+            </div>
+        </header>
+
+        <main class="content-container" id="main-content">
+            <!-- 动态渲染内容 -->
+        </main>
+    </div>
+
+    <script src="/static/js/app.js?v=20260827_6"></script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>网站安全智能巡检与敏感信息防泄露评估报告 - 即时巡检 - https://msgbox-merc.vercel.app/</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 24px; }
+        .container { max-width: 1000px; margin: 0 auto; background: #1e293b; border-radius: 12px; padding: 32px; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #334155; padding-bottom: 20px; margin-bottom: 24px; }
+        .header h1 { font-size: 22px; color: #38bdf8; margin: 0; }
+        .meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; font-size: 13px; color: #94a3b8; background: #0f172a; padding: 16px; border-radius: 8px; }
+        .score-card { text-align: center; padding: 20px; background: #0f172a; border-radius: 10px; margin-bottom: 24px; border-left: 6px solid #10b981; }
+        .score-num { font-size: 48px; font-weight: 800; color: #10b981; }
+        .stats-row { display: flex; gap: 12px; margin-bottom: 30px; }
+        .stat-box { flex: 1; background: #0f172a; padding: 14px; border-radius: 8px; text-align: center; border: 1px solid #334155; }
+        .stat-val { font-size: 20px; font-weight: 700; margin-top: 4px; }
+        .finding-card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+        .finding-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: #1e293b; border-bottom: 1px solid #334155; }
+        .severity-badge { color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+        .cvss-pill { margin-left: auto; font-size: 11px; background: #334155; padding: 2px 8px; border-radius: 12px; color: #cbd5e1; }
+        .finding-body { padding: 16px; font-size: 13px; line-height: 1.6; }
+        .evidence-box { background: #020617; padding: 12px; border-radius: 6px; border: 1px solid #1e293b; margin: 10px 0; }
+        .evidence-box pre { margin: 6px 0 0 0; color: #38bdf8; font-family: monospace; white-space: pre-wrap; word-break: break-all; font-size: 12px; }
+        .remediation-box { background: #064e3b22; border-left: 4px solid #10b981; padding: 10px 14px; border-radius: 4px; margin-top: 10px; }
+        .footer { text-align: center; font-size: 12px; color: #64748b; margin-top: 40px; border-top: 1px solid #334155; padding-top: 16px; }
+        @media print {
+            body { background: #fff; color: #000; padding: 0; }
+            .container { box-shadow: none; border: none; background: #fff; color: #000; }
+            .meta-grid, .score-card, .stat-box, .finding-card { background: #f8fafc; border: 1px solid #cbd5e1; color: #000; }
+            .evidence-box { background: #f1f5f9; color: #000; }
+            .evidence-box pre { color: #0369a1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>🛡️ 网站安全智能巡检与敏感信息防泄露评估报告</h1>
+                <p style="margin: 4px 0 0 0; font-size: 12px; color: #94a3b8;">DAS-SentinelAgent (安恒星巡安全智能体) 自动生成</p>
+            </div>
+            <button onclick="window.print()" style="background:#0284c7; color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600;">🖨️ 导出/打印 PDF</button>
+        </div>
+
+        <div class="meta-grid">
+            <div><strong>任务名称：</strong>即时巡检 - https://msgbox-merc.vercel.app/</div>
+            <div><strong>目标站点：</strong>https://msgbox-merc.vercel.app/</div>
+            <div><strong>巡检时间：</strong>2026-08-26T13:05:39.137989 ~ 2026-08-26T13:05:39.142438</div>
+            <div><strong>安全评级：</strong>HEALTHY (安全良好)</div>
+        </div>
+
+        <div class="score-card">
+            <div style="font-size: 14px; color: #94a3b8; font-weight: 600;">综合安全态势评分</div>
+            <div class="score-num">100 <span style="font-size: 20px;">/ 100</span></div>
+            <div style="font-size: 13px; color: #cbd5e1; margin-top: 4px;">HEALTHY (安全良好)</div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-box" style="border-top: 3px solid #ef4444;">
+                <div style="color:#94a3b8; font-size:12px;">严重风险 (Critical)</div>
+                <div class="stat-val" style="color:#ef4444;">0</div>
+            </div>
+            <div class="stat-box" style="border-top: 3px solid #f97316;">
+                <div style="color:#94a3b8; font-size:12px;">高危风险 (High)</div>
+                <div class="stat-val" style="color:#f97316;">0</div>
+            </div>
+            <div class="stat-box" style="border-top: 3px solid #f59e0b;">
+                <div style="color:#94a3b8; font-size:12px;">中危风险 (Medium)</div>
+                <div class="stat-val" style="color:#f59e0b;">0</div>
+            </div>
+            <div class="stat-box" style="border-top: 3px solid #3b82f6;">
+                <div style="color:#94a3b8; font-size:12px;">低危与合规 (Low/Info)</div>
+                <div class="stat-val" style="color:#3b82f6;">0</div>
+            </div>
+        </div>
+
+        <h3 style="border-left: 4px solid #38bdf8; padding-left: 10px; margin-bottom: 16px;">📋 详细风险隐患与整改建议清单 (0 项)</h3>
+        
+        <p style="text-align:center; color:#10b981; padding:30px;">🎉 未检测到安全隐患，网站运行状态良好！</p>
+
+        <div class="footer">
+            <p>杭州安恒信息技术股份有限公司 (DAS-Security) · 恒脑安全智能体开发支持</p>
+            <p>报告生成时间：2026-08-26 13:06:25 | 本报告受数字签名与日志审计保护</p>
+        </div>
+    </div>
+</body>
+</html>
