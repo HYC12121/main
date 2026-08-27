@@ -42,6 +42,7 @@ class AssetCrawler:
         self.discovered_forms: List[Dict[str, Any]] = []
         self.discovered_parameters: Dict[str, Set[str]] = {}  # { url_path: set(param_names) }
         self.js_scripts_data: List[Dict[str, Any]] = []      # [ { "url": js_url, "content": js_text } ]
+        self.visited_url_structures: Set[str] = set()        # 用于参数去重，例如 /api?id=x 归一化后记录
 
     def is_authorized(self, url: str) -> bool:
         """严格边界检查：判断目标 URL 是否在授权域名范围内"""
@@ -60,6 +61,22 @@ class AssetCrawler:
     def clean_url(self, url: str) -> str:
         url, _ = urldefrag(url)
         return url.strip()
+
+    def _get_url_structure(self, url: str) -> str:
+        """获取归一化的 URL 结构 (例如将 /page?id=123 转化为 /page?id=TYPE_INT) 防止参数轰炸导致无限遍历"""
+        try:
+            parsed = urlparse(url)
+            base = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+            if not parsed.query:
+                return base
+            
+            params = parse_qs(parsed.query, keep_blank_values=True)
+            normalized_params = []
+            for k in sorted(params.keys()):
+                normalized_params.append(f"{k}=VAL")
+            return f"{base}?{'&'.join(normalized_params)}"
+        except Exception:
+            return url
 
     def _extract_url_params(self, url: str):
         """提取并记录 URL 中的查询参数名"""
@@ -110,8 +127,10 @@ class AssetCrawler:
                         locs = re.findall(r"<loc>(.*?)</loc>", text, re.IGNORECASE)
                         for loc in locs[:30]:
                             loc_clean = self.clean_url(loc.strip())
-                            if self.is_authorized(loc_clean) and loc_clean not in self.visited_urls:
+                            loc_struct = self._get_url_structure(loc_clean)
+                            if self.is_authorized(loc_clean) and loc_struct not in self.visited_url_structures:
                                 self.visited_urls.add(loc_clean)
+                                self.visited_url_structures.add(loc_struct)
                                 queue.append((loc_clean, 1))
             except Exception as e:
                 logger.debug(f"{sitemap_path} check failed for {root_url}: {e}")
@@ -145,6 +164,7 @@ class AssetCrawler:
         """执行异步广度优先（BFS）网站页面与资源发现"""
         queue = [(self.base_url, 1)]
         self.visited_urls.add(self.clean_url(self.base_url))
+        self.visited_url_structures.add(self._get_url_structure(self.base_url))
         self._extract_url_params(self.base_url)
         
         headers = {
@@ -227,8 +247,10 @@ class AssetCrawler:
                                     if full_url.startswith("http://") or full_url.startswith("https://"):
                                         self._extract_url_params(full_url)
                                         if self.is_authorized(full_url):
-                                            if full_url not in self.visited_urls:
+                                            url_struct = self._get_url_structure(full_url)
+                                            if url_struct not in self.visited_url_structures:
                                                 self.visited_urls.add(full_url)
+                                                self.visited_url_structures.add(url_struct)
                                                 queue.append((full_url, depth + 1))
                                         else:
                                             self.external_links.add(full_url)
@@ -247,13 +269,15 @@ class AssetCrawler:
                                                             if js_resp.status == 200:
                                                                 js_text = await js_resp.text(errors="replace")
                                                                 self.js_scripts_data.append({"url": res_url, "content": js_text})
-                                                                # 自动提取 Webpack / Axios / Fetch / vue-router 中的 API 路由
+                                                                # 自动提取 Webpack / Axios / Fetch / vue-router 中的 API 路由 (增强正则)
                                                                 api_patterns = [
-                                                                    r"['\"]\s*(/(?:api|v[1-9]|auth|user|admin|service|gateway|backend|portal)/[a-zA-Z0-9_/{}.-]{2,80})['\"]\s*[,\)\}\]]",
-                                                                    r"(?:baseURL|apiUrl|apiBase|baseApi|API_BASE|api_base)\s*[:=]\s*['\"]([^'\"]{5,100})['\"]",
-                                                                    r"fetch\s*\(\s*['\"]([^'\"]{5,120})['\"]",
-                                                                    r"axios\.(?:get|post|put|delete|patch)\s*\(\s*['\"]([^'\"]{5,120})['\"]",
-                                                                    r"\$http\.(?:get|post|put|delete)\s*\(\s*['\"]([^'\"]{5,120})['\"]",
+                                                                    r"['\"]\s*(/(?:api|v[1-9]|auth|user|admin|service|gateway|backend|portal|graphql|graphql-api)/[a-zA-Z0-9_/{}.-]{2,100})['\"]\s*[,\)\}\]]?",
+                                                                    r"(?:baseURL|apiUrl|apiBase|baseApi|API_BASE|api_base)\s*[:=]\s*['\"]([^'\"]{5,120})['\"]",
+                                                                    r"fetch\s*\(\s*['\"]([^'\"]{5,150})['\"]",
+                                                                    r"axios\.(?:get|post|put|delete|patch|request)\s*\(\s*['\"]([^'\"]{5,150})['\"]",
+                                                                    r"\$http\.(?:get|post|put|delete)\s*\(\s*['\"]([^'\"]{5,150})['\"]",
+                                                                    r"url\s*:\s*['\"](/(?:api|v\d+)/[^'\"]+)['\"]", 
+                                                                    r"endpoint\s*:\s*['\"]([^'\"]+)['\"]"
                                                                 ]
                                                                 for pat in api_patterns:
                                                                     for m in re.findall(pat, js_text):
