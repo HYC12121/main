@@ -12,6 +12,7 @@ from backend.app.scanners.vuln_detector import VulnerabilityDetector
 from backend.app.scanners.tamper_detector import TamperDetector
 from backend.app.scanners.sensitive_inspector import SensitiveInspector
 from backend.app.agent.verifier import FindingVerifier
+from backend.app.scanners.src_filter import apply_src_filter, get_src_stats
 from backend.app.agent.advisor import RemediationAdvisor
 
 logger = logging.getLogger("das_sentinel.orchestrator")
@@ -112,6 +113,19 @@ class InspectionOrchestrator:
             # 阶段 5：智能去重、关联验证、风险定级与架构拓扑指纹分析
             self._update_task_status("RUNNING", 90, "正在执行智能体去重、技术栈拓扑指纹识别与风险定级归纳...")
             all_raw_findings = vuln_findings + tamper_findings + sensitive_findings
+
+            # ────────────────────────────────────────────────────────────────────
+            # SRC 漏洞边界过滤：删除不符合 SRC 认定标准的低价值噪音
+            # 过滤内容：HTTP 安全头缺失 / 版本指纹 / Cookie 属性 / SRI 等 INFO 类
+            # ────────────────────────────────────────────────────────────────────
+            all_raw_findings_pre_src = all_raw_findings.copy()
+            all_raw_findings = apply_src_filter(all_raw_findings)
+            src_stats = get_src_stats(all_raw_findings_pre_src, all_raw_findings)
+            logger.info(
+                f"[SRC-Filter] Raw={src_stats['total_raw']} -> "
+                f"Eligible={src_stats['total_src_eligible']} "
+                f"(Filtered {src_stats['filtered_noise']} noise, rate={src_stats['filter_rate']})"
+            )
             deduped_findings = FindingVerifier.deduplicate_findings(all_raw_findings)
             
             # 为每一条发现注入专家整改建议

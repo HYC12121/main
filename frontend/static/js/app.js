@@ -2,6 +2,8 @@ const API_BASE = '/api/v1';
 
 let activeTab = 'dashboard';
 let pollingTimer = null;
+let heartbeatTimer = null;
+let heartbeatOk = true;
 let currentDetailTaskId = null;
 let currentTaskDetailData = null;
 let selectedFindingIndex = 0;
@@ -20,7 +22,47 @@ document.addEventListener('DOMContentLoaded', () => {
     initNav();
     renderTabContent('dashboard');
     startPolling();
+    startHeartbeat();
 });
+
+// ─── 30 秒心跳定时器 ─────────────────────────────────────────────────────────
+function startHeartbeat() {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    // 立即执行一次
+    checkHeartbeat();
+    // 之后每 30 秒检测一次
+    heartbeatTimer = setInterval(checkHeartbeat, 30000);
+}
+
+async function checkHeartbeat() {
+    const indicator = document.getElementById('hb-indicator');
+    const uptimeEl  = document.getElementById('hb-uptime');
+    try {
+        const res = await fetch(`${API_BASE}/heartbeat`, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) {
+            const data = await res.json();
+            heartbeatOk = true;
+            if (indicator) {
+                indicator.title = `后端服务正常 ✓ 运行时长 ${data.uptime}`;
+                indicator.style.background = '#22c55e';
+                indicator.style.boxShadow = '0 0 6px #22c55e';
+            }
+            if (uptimeEl) uptimeEl.innerText = data.uptime;
+        } else {
+            throw new Error(`HTTP ${res.status}`);
+        }
+    } catch (e) {
+        heartbeatOk = false;
+        if (indicator) {
+            indicator.title = `后端心跳丢失！(${e.message})`;
+            indicator.style.background = '#ef4444';
+            indicator.style.boxShadow = '0 0 8px #ef4444';
+        }
+        if (uptimeEl) uptimeEl.innerText = '--:--:--';
+        console.warn('[Heartbeat] Backend unreachable:', e.message);
+    }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 function initNav() {
     document.querySelectorAll('.nav-item').forEach(item => {

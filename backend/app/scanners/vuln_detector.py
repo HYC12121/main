@@ -12,6 +12,11 @@ from backend.app.config import settings
 
 logger = logging.getLogger("das_sentinel.vuln")
 
+try:
+    from backend.app.scanners.src_filter import apply_src_filter
+except ImportError:
+    def apply_src_filter(findings): return findings  # fallback
+
 class VulnerabilityDetector:
     """全面 Web 常见漏洞、弱配置、接口暴露与主动参数风险检测引擎 (带智能抗误报基线)"""
     
@@ -89,11 +94,11 @@ class VulnerabilityDetector:
                 method_findings = await self._check_http_methods(session, main_page["url"])
                 findings.extend(method_findings)
 
-            # 2. Cookie 安全属性审计
+            # 2. Cookie 安全属性审计 [已禁用 - Cookie属性缺失不达SRC认定标准]
+            # cookie_findings = self._check_cookie_security(crawled_pages)
+            # findings.extend(cookie_findings)
             if progress_callback:
-                await progress_callback(2, 6, "正在执行会话 Cookie 与跨站防护属性审计...")
-            cookie_findings = self._check_cookie_security(crawled_pages)
-            findings.extend(cookie_findings)
+                await progress_callback(2, 6, "跳过 Cookie 属性审计（不达SRC标准），继续下一步检测...")
 
             # 3. CORS 高级检测（含子域反射、null Origin、API 端点）
             if progress_callback:
@@ -143,187 +148,63 @@ class VulnerabilityDetector:
             for f in findings:
                 f["exploit_chain"] = self.construct_exploit_chain(f)
 
+        # ── 最终 SRC 边界过滤：移除所有不达 SRC 认定标准的 INFO 噪音 ──────────────
+        findings = apply_src_filter(findings)
+        logger.info(f"[VulnDetector] SRC-filtered findings count: {len(findings)}")
         return findings
 
     def _check_security_headers(self, page_data: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """全面审计 HTTP 安全防护标头"""
+        """
+        HTTP 安全标头检测 — 精简版（仅保留 SRC 中危及以上配置缺陷）。
+        
+        已禁用（不满足 SRC 认定标准）：
+          ✗ HSTS 缺失 / includeSubDomains 不完整
+          ✗ CSP 头缺失
+          ✗ X-Frame-Options 缺失
+          ✗ X-Content-Type-Options 缺失
+          ✗ Referrer-Policy 缺失
+          ✗ 服务器版本 Banner 暴露
+        
+        保留检测（有实际利用价值）：
+          ✓ CSP 存在 unsafe-inline 且允许执行内联脚本 (MEDIUM CVSS≥5)
+          ✓ HTTP TRACE 跨站追踪 (XST) - 由 _check_http_methods 处理
+        """
         findings = []
         page_headers = {k.lower(): v for k, v in page_data.get("headers", {}).items()}
         url = page_data.get("url", self.target_url)
-        
-        # 1. HSTS (针对 HTTPS)
-        if url.startswith("https://"):
-            hsts_val = page_headers.get("strict-transport-security")
-            if not hsts_val:
-                findings.append({
-                    "id": str(uuid.uuid4()),
-                    "category": "MISCONFIG",
-                    "title": "缺失 HTTP 严格传输安全响应头 (HSTS)",
-                    "severity": "INFO",
-                    "url": url,
-                    "param": "Header: Strict-Transport-Security",
-                    "evidence": {
-                        "matched_snippet": "Missing header: Strict-Transport-Security",
-                        "response_headers": page_data.get("headers", {})
-                    },
-                    "impact": "可能遭受 SSL 剥离",
-                    "remediation": "添加 Strict-Transport-Security 头",
-                    "verified": 1,
-                    "cvss_score": 0.0,
-                    "status": "OPEN"
-                })
-            elif "max-age" in hsts_val and "includesubdomains" not in hsts_val.lower():
-                findings.append({
-                    "id": str(uuid.uuid4()),
-                    "category": "VULN",
-                    "title": "HSTS 策略未覆盖全部子域名 (缺少 includeSubDomains)",
-                    "severity": "INFO",
-                    "url": url,
-                    "param": "Header: Strict-Transport-Security",
-                    "evidence": {
-                        "matched_snippet": f"Strict-Transport-Security: {hsts_val}",
-                        "response_headers": page_data.get("headers", {})
-                    },
-                    "impact": "攻击者可尝试针对同根子域名发起中间人劫持",
-                    "remediation": "完善 HSTS 配置，增加 includeSubDomains 指令",
-                    "verified": 1,
-                    "cvss_score": 2.5,
-                    "status": "OPEN"
-                })
 
-        # 2. Content-Security-Policy (CSP) 深度分析
-        csp_val = page_headers.get("content-security-policy")
-        if not csp_val:
-            findings.append({
-                "id": str(uuid.uuid4()),
-                "category": "MISCONFIG",
-                "title": "缺失内容安全策略响应头 (Content-Security-Policy)",
-                "severity": "INFO",
-                "url": url,
-                "param": "Header: Content-Security-Policy",
-                "evidence": {
-                    "matched_snippet": "Missing header: Content-Security-Policy (CSP)",
-                    "response_headers": page_data.get("headers", {})
-                },
-                "impact": "浏览器失去对外部不受信任脚本与资源的强隔离策略",
-                "remediation": "部署严格的 CSP 策略",
-                "verified": 1,
-                "cvss_score": 0.0,
-                "status": "OPEN"
-            })
-        else:
-            # 审计 CSP 是否包含高危弱配置
+        # 仅保留 CSP unsafe-inline + script-src 组合（可直接用于 XSS 绕过，MEDIUM+）
+        csp_val = page_headers.get("content-security-policy", "")
+        if csp_val:
             weaknesses = []
-            if "'unsafe-inline'" in csp_val and "script-src" in csp_val:
-                weaknesses.append("包含 'unsafe-inline' (允许执行内联注入脚本)")
-            if "'unsafe-eval'" in csp_val:
-                weaknesses.append("包含 'unsafe-eval' (允许动态 eval 字符串脚本)")
-            if "script-src *" in csp_val or "default-src *" in csp_val:
-                weaknesses.append("包含通配符 * (允许从任意外部域名加载脚本)")
-                
-            if weaknesses:
+            if ("'unsafe-inline'" in csp_val and "script-src" in csp_val):
+                weaknesses.append("script-src 包含 'unsafe-inline'（允许执行内联注入脚本）")
+            if ("'unsafe-eval'" in csp_val and "script-src" in csp_val):
+                weaknesses.append("script-src 包含 'unsafe-eval'（允许动态 eval 字符串脚本）")
+            if ("script-src *" in csp_val or "default-src *" in csp_val):
+                weaknesses.append("script-src / default-src 包含通配符 *（任意外部域脚本）")
+
+            if len(weaknesses) >= 1:
                 findings.append({
                     "id": str(uuid.uuid4()),
                     "category": "VULN",
-                    "title": "Content-Security-Policy (CSP) 存在不安全弱配置指令",
-                    "severity": "LOW",
+                    "title": "Content-Security-Policy 存在高危弱配置指令（可辅助 XSS 绕过）",
+                    "severity": "MEDIUM",
                     "url": url,
                     "param": "Header: Content-Security-Policy",
                     "evidence": {
-                        "matched_snippet": f"CSP 策略: {csp_val} (弱点: {', '.join(weaknesses)})",
+                        "matched_snippet": f"CSP: {csp_val[:200]} | 弱点: {', '.join(weaknesses)}",
                         "weaknesses": weaknesses,
-                        "response_headers": page_data.get("headers", {})
                     },
-                    "impact": "宽松的 CSP 规则可能被攻击者通过内联脚本或外部可控源轻松绕过",
-                    "remediation": "移除 'unsafe-inline' 与 'unsafe-eval'，改用基于 Nonce 或 Hash 的脚本白名单机制",
+                    "impact": "宽松的 CSP 规则使攻击者可通过内联脚本注入绕过 XSS 防护，显著降低 XSS 利用门槛",
+                    "remediation": "移除 'unsafe-inline' 与 'unsafe-eval'，改用基于 Nonce 或 Hash 的脚本白名单",
                     "verified": 1,
-                    "cvss_score": 4.0,
+                    "cvss_score": 5.4,
                     "status": "OPEN"
                 })
 
-        # 3. X-Frame-Options (防点击劫持)
-        if "x-frame-options" not in page_headers and (not csp_val or "frame-ancestors" not in csp_val):
-            findings.append({
-                "id": str(uuid.uuid4()),
-                "category": "MISCONFIG",
-                "title": "缺失 X-Frame-Options 响应头（点击劫持风险）",
-                "severity": "INFO",
-                "url": url,
-                "param": "Header: X-Frame-Options",
-                "evidence": {
-                    "matched_snippet": "Missing header: X-Frame-Options / frame-ancestors in CSP",
-                    "response_headers": page_data.get("headers", {})
-                },
-                "impact": "可能被 iframe 嵌套",
-                "remediation": "增加 X-Frame-Options: SAMEORIGIN",
-                "verified": 1,
-                "cvss_score": 0.0,
-                "status": "OPEN"
-            })
-
-        # 4. X-Content-Type-Options (MIME 嗅探防护)
-        if "x-content-type-options" not in page_headers:
-            findings.append({
-                "id": str(uuid.uuid4()),
-                "category": "VULN",
-                "title": "缺失 X-Content-Type-Options 响应头",
-                "severity": "INFO",
-                "url": url,
-                "param": "Header: X-Content-Type-Options",
-                "evidence": {
-                    "matched_snippet": "Missing header: X-Content-Type-Options: nosniff",
-                    "response_headers": page_data.get("headers", {})
-                },
-                "impact": "浏览器可能会将非可执行文件当作脚本执行，增加 MIME 混淆 XSS 风险",
-                "remediation": "在响应头中添加: X-Content-Type-Options: nosniff",
-                "verified": 1,
-                "cvss_score": 2.6,
-                "status": "OPEN"
-            })
-
-        # 5. Referrer-Policy (来源地址隐私泄露)
-        ref_policy = page_headers.get("referrer-policy", "")
-        if not ref_policy:
-            findings.append({
-                "id": str(uuid.uuid4()),
-                "category": "VULN",
-                "title": "缺失 Referrer-Policy 来源地址策略",
-                "severity": "INFO",
-                "url": url,
-                "param": "Header: Referrer-Policy",
-                "evidence": {
-                    "matched_snippet": "Missing header: Referrer-Policy",
-                    "response_headers": page_data.get("headers", {})
-                },
-                "impact": "用户跳转第三方外链时，可能在 Referer 标头中将 URL 中携带的内部 Token 或敏感参数泄露给外部第三方",
-                "remediation": "添加响应头: Referrer-Policy: strict-origin-when-cross-origin",
-                "verified": 1,
-                "cvss_score": 2.5,
-                "status": "OPEN"
-            })
-
-        # 6. 服务指纹与中间件版本暴露
-        server_banner = page_headers.get("server") or page_headers.get("x-powered-by")
-        if server_banner and any(c.isdigit() for c in server_banner):
-            findings.append({
-                "id": str(uuid.uuid4()),
-                "category": "VULN",
-                "title": f"Web 中间件详细版本暴露 ({server_banner})",
-                "severity": "INFO",
-                "url": url,
-                "param": f"Server Banner: {server_banner}",
-                "evidence": {
-                    "matched_snippet": f"Server / X-Powered-By: {server_banner}",
-                    "response_headers": page_data.get("headers", {})
-                },
-                "impact": "便于攻击者直接获取中间件准确版本号并快速检索利用已知 1-day/0-day CVE 漏洞",
-                "remediation": "在 Nginx/Apache/Tomcat 配置中关闭 server_tokens 或移除 X-Powered-By 头",
-                "verified": 1,
-                "cvss_score": 2.0,
-                "status": "OPEN"
-            })
-            
         return findings
+
 
     async def _check_http_methods(self, session: aiohttp.ClientSession, url: str) -> List[Dict[str, Any]]:
         """检测不安全 HTTP 请求方法 (如 TRACE / XST 跨站追踪漏洞)"""
@@ -989,7 +870,8 @@ class VulnerabilityDetector:
                     false_status = false_resp.status
                     false_text = await false_resp.text(errors="replace")
                     
-                if true_status == 200 and (false_status != 200 or abs(len(true_text) - len(false_text)) > 20):
+                # SRC 抗误报增强：差分阈值提升至 100 字节，避免微小噪音导致误报
+                if true_status == 200 and (false_status != 200 or abs(len(true_text) - len(false_text)) > 100):
                     if not self._is_false_positive_spa_response(true_text, true_status):
                         findings.append({
                             "id": str(uuid.uuid4()),

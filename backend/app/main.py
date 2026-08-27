@@ -9,6 +9,7 @@ from backend.app.config import settings
 from backend.app.database import init_db
 from backend.app.baseline.scheduler_service import SchedulerService
 from backend.app.api import tasks, findings, baselines, rules, agent, reports, msgbox_tool
+from backend.app.api import heartbeat as heartbeat_api
 
 logging.basicConfig(
     level=logging.INFO,
@@ -65,6 +66,7 @@ app.include_router(rules.router, prefix=settings.API_V1_STR)
 app.include_router(agent.router, prefix=settings.API_V1_STR)
 app.include_router(reports.router, prefix=settings.API_V1_STR)
 app.include_router(msgbox_tool.router, prefix=settings.API_V1_STR)
+app.include_router(heartbeat_api.router, prefix=settings.API_V1_STR)
 
 # 挂载前端静态目录
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
