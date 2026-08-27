@@ -16,12 +16,11 @@ class Settings(BaseSettings):
     REPORTS_DIR: str = str(DATA_DIR / "reports")
     SNAPSHOTS_DIR: str = str(DATA_DIR / "snapshots")
     
-    # 默认安全边界与限速（符合题目合规要求）
-    DEFAULT_CONCURRENCY: int = 5
-    DEFAULT_RATE_LIMIT_QPS: float = 5.0
+    DEFAULT_CONCURRENCY: int = 50
+    DEFAULT_RATE_LIMIT_QPS: float = 50.0
     DEFAULT_TIMEOUT_SEC: float = 10.0
-    DEFAULT_MAX_PAGES: int = 100
-    DEFAULT_MAX_DEPTH: int = 3
+    DEFAULT_MAX_PAGES: int = 5000
+    DEFAULT_MAX_DEPTH: int = 5
     DEFAULT_USER_AGENT: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 (DAS-SentinelAgent/1.0; Security Audit)"
     
     # 恒脑安全智能体对接配置

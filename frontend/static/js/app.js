@@ -337,8 +337,8 @@ async function triggerQuickScan() {
                 target_url: url,
                 auth_domains: [],
                 max_depth: 3,
-                max_pages: 50,
-                qps_limit: 5.0
+                max_pages: 5000,
+                qps_limit: 50.0
             })
         });
         const data = await res.json();
