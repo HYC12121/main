@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-from backend.app.scanners.tamper_detector import TamperDetector
+from plugins.scanner_core.tamper_detector import TamperDetector
 
 def test_hidden_link_detection():
     detector = TamperDetector(auth_domains=["example.gov.cn"])

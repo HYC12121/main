@@ -3,10 +3,10 @@ from pydantic import BaseModel, Field
 from fastapi import APIRouter, HTTPException
 from backend.app.agent.brain import AgentBrain
 from backend.app.agent.hengnao_adapter import HengNaoAgentAdapter
-from backend.app.scanners.asset_crawler import AssetCrawler
-from backend.app.scanners.vuln_detector import VulnerabilityDetector
-from backend.app.scanners.tamper_detector import TamperDetector
-from backend.app.scanners.sensitive_inspector import SensitiveInspector
+from plugins.scanner_extensions.sub_assets.asset_crawler import AssetCrawler
+from plugins.scanner_core.vuln_detector import VulnerabilityDetector
+from plugins.scanner_core.tamper_detector import TamperDetector
+from plugins.scanner_core.sensitive_inspector import SensitiveInspector
 from backend.app.baseline.baseline_service import BaselineService
 
 router = APIRouter(prefix="/agent", tags=["智能体大脑与恒脑平台交互"])

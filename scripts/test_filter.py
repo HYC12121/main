@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(0, '.')
-from backend.app.scanners.sensitive_inspector import SensitiveInspector
+from plugins.scanner_core.sensitive_inspector import SensitiveInspector
 import inspect
 
 src = inspect.getsource(SensitiveInspector.scan_pages)

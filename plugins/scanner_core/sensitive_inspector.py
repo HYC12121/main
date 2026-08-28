@@ -1,3 +1,4 @@
+from plugins.core.base import BaseScanner, ScanContext
 import re
 import uuid
 import logging
@@ -7,7 +8,7 @@ from backend.app.database import get_db_connection
 
 logger = logging.getLogger("das_sentinel.sensitive")
 
-class SensitiveInspector:
+class SensitiveInspector(BaseScanner):
     """深度敏感信息、个人隐私、云端秘钥与数据泄露检测引擎"""
 
     def __init__(self, custom_keywords: Optional[List[str]] = None):
@@ -279,3 +280,8 @@ class SensitiveInspector:
                     })
 
         return findings
+
+    async def run(self, context: ScanContext) -> None:
+        self.custom_keywords = context.scan_scope.get('custom_sensitive_keywords', [])
+        findings = self.scan_pages(context.crawled_pages, js_scripts=context.js_scripts)
+        context.add_findings(findings)

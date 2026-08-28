@@ -3,7 +3,7 @@ Trace exactly what happens during scan with the specific HTML structure
 """
 import sys, re
 sys.path.insert(0, '.')
-from backend.app.scanners.sensitive_inspector import SensitiveInspector
+from plugins.scanner_core.sensitive_inspector import SensitiveInspector
 
 insp = SensitiveInspector()
 

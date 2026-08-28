@@ -1,5 +1,5 @@
 import pytest
-from backend.app.scanners.sensitive_inspector import SensitiveInspector
+from plugins.scanner_core.sensitive_inspector import SensitiveInspector
 
 def test_id_card_checksum_validation():
     # 正确合法的 18 位身份证 (校验位计算匹配)

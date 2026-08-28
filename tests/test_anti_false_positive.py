@@ -1,7 +1,7 @@
 import pytest
 from bs4 import BeautifulSoup
-from backend.app.scanners.tamper_detector import TamperDetector
-from backend.app.scanners.sensitive_inspector import SensitiveInspector
+from plugins.scanner_core.tamper_detector import TamperDetector
+from plugins.scanner_core.sensitive_inspector import SensitiveInspector
 
 def test_tamper_detector_benign_travel_site():
     """测试真实旅游网站（如携程）包含澳门酒店/地名时，不应误报涉赌暗链"""

@@ -201,7 +201,7 @@ async def get_task_details(task_id: str):
     logs = [dict(r) for r in cursor.fetchall()]
     
     # 5. 技术栈架构与拓扑指纹分析 (若任务中未持久化，则即时推断)
-    from backend.app.scanners.fingerprint_detector import ArchitectureFingerprintDetector
+    from plugins.scanner_extensions.sub_assets.fingerprint_detector import ArchitectureFingerprintDetector
     architecture = task.get("summary", {}).get("architecture")
     if not architecture:
         architecture = ArchitectureFingerprintDetector.detect_architecture(task["target_url"], sitemap, findings)

@@ -2,7 +2,7 @@ import pytest
 import os
 from backend.app.agent.verifier import FindingVerifier
 from backend.app.baseline.report_service import ReportService
-from backend.app.scanners.fingerprint_detector import ArchitectureFingerprintDetector
+from plugins.scanner_extensions.sub_assets.fingerprint_detector import ArchitectureFingerprintDetector
 from backend.app.database import init_db, get_db_connection
 
 def test_url_normalization_dedup():

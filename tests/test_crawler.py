@@ -1,5 +1,5 @@
 import pytest
-from backend.app.scanners.asset_crawler import AssetCrawler
+from plugins.scanner_extensions.sub_assets.asset_crawler import AssetCrawler
 
 def test_crawler_authorization_boundary():
     crawler = AssetCrawler(

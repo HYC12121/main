@@ -1,3 +1,4 @@
+from plugins.core.base import BaseScanner, ScanContext
 import asyncio
 import uuid
 import logging
@@ -13,11 +14,11 @@ from backend.app.config import settings
 logger = logging.getLogger("das_sentinel.vuln")
 
 try:
-    from backend.app.scanners.src_filter import apply_src_filter
+    from plugins.core.src_filter import apply_src_filter
 except ImportError:
     def apply_src_filter(findings): return findings  # fallback
 
-class VulnerabilityDetector:
+class VulnerabilityDetector(BaseScanner):
     """全面 Web 常见漏洞、弱配置、接口暴露与主动参数风险检测引擎 (带智能抗误报基线)"""
     
     def __init__(self, target_url: str, auth_domains: List[str]):
@@ -1626,3 +1627,9 @@ class VulnerabilityDetector:
     # Keep backward compatibility alias
     async def _probe_api_unauthorized_endpoints(self, session, discovered_apis) -> list:
         return await self._probe_api_unauthorized_endpoints_v2(session, discovered_apis)
+
+    async def run(self, context: ScanContext) -> None:
+        self.target_url = context.target_url
+        self.auth_domains = context.auth_domains
+        findings = await self.scan_all(context.crawled_pages, crawl_metadata={'api_endpoints': context.api_endpoints, 'static_assets': context.static_assets})
+        context.add_findings(findings)

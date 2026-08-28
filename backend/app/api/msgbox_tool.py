@@ -11,7 +11,7 @@ import aiohttp
 from backend.app.config import settings
 from backend.app.database import get_db_connection
 from backend.app.agent.orchestrator import InspectionOrchestrator
-from backend.app.scanners.vuln_detector import VulnerabilityDetector
+from plugins.scanner_core.vuln_detector import VulnerabilityDetector
 
 router = APIRouter(prefix="/msgbox", tags=["MsgBox 开发者接口与专项测试工具"])
 logger = logging.getLogger("das_sentinel.msgbox_tool")

@@ -196,13 +196,13 @@ class FindingVerifier:
                         masked_val = evidence.get("matched_value_masked", "")
                         # 检查原始明文是否还在页面中
                         rule_cat = evidence.get("category", "KEYWORD")
-                        from backend.app.scanners.sensitive_inspector import SensitiveInspector
+                        from plugins.scanner_core.sensitive_inspector import SensitiveInspector
                         inspector = SensitiveInspector()
                         findings_res = inspector.scan_pages([{"url": url, "html_content": text}])
                         is_still_vulnerable = any(f["title"] == title for f in findings_res)
                         reason = "页面中仍可提取到匹配的敏感隐私字段" if is_still_vulnerable else "页面已完成敏感数据脱敏或删除"
                     elif category == "TAMPER":
-                        from backend.app.scanners.tamper_detector import TamperDetector
+                        from plugins.scanner_core.tamper_detector import TamperDetector
                         tamper_detector = TamperDetector(auth_domains=[])
                         tamper_res = tamper_detector.scan_pages([{"url": url, "html_content": text}])
                         is_still_vulnerable = any(f["title"] == title for f in tamper_res)

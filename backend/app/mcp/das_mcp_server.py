@@ -28,8 +28,8 @@ if BASE_DIR not in sys.path:
 
 from backend.app.database import init_db, get_db_connection
 from backend.app.agent.orchestrator import InspectionOrchestrator
-from backend.app.scanners.vuln_detector import VulnerabilityDetector
-from backend.app.scanners.asset_crawler import AssetCrawler
+from plugins.scanner_core.vuln_detector import VulnerabilityDetector
+from plugins.scanner_extensions.sub_assets.asset_crawler import AssetCrawler
 
 init_db()
 

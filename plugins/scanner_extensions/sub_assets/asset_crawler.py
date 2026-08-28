@@ -1,3 +1,4 @@
+from plugins.core.base import BaseScanner, ScanContext
 import asyncio
 import hashlib
 import logging
@@ -10,7 +11,7 @@ from backend.app.config import settings
 
 logger = logging.getLogger("das_sentinel.crawler")
 
-class AssetCrawler:
+class AssetCrawler(BaseScanner):
     """现代 Web 资产拓扑、页面、表单、动态参数与接口深度发现引擎"""
 
     def __init__(
@@ -332,3 +333,16 @@ class AssetCrawler:
             "url_parameters": structured_params,
             "js_scripts": self.js_scripts_data
         }
+
+    async def run(self, context: ScanContext) -> None:
+        self.base_url = context.target_url
+        self.auth_domains = context.auth_domains
+        self.max_depth = context.scan_scope.get('max_depth', 3)
+        self.max_pages = context.scan_scope.get('max_pages', 50)
+        self.qps_limit = context.scan_scope.get('qps_limit', 5.0)
+        results = await self.crawl()
+        context.crawled_pages = results.get('pages', [])
+        context.external_links = results.get('external_links', [])
+        context.js_scripts = results.get('js_scripts', [])
+        context.static_assets = results.get('static_assets', set())
+        context.api_endpoints = results.get('api_endpoints', set())

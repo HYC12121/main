@@ -5,7 +5,7 @@ from typing import List
 from fastapi import APIRouter, HTTPException, Query
 from backend.app.database import get_db_connection
 from backend.app.models.sensitive_rule import SensitiveRuleCreate, SensitiveRuleResponse, SensitiveRuleTestRequest
-from backend.app.scanners.sensitive_inspector import SensitiveInspector
+from plugins.scanner_core.sensitive_inspector import SensitiveInspector
 
 router = APIRouter(prefix="/rules", tags=["敏感信息规则库管理"])
 

@@ -7,12 +7,13 @@ from typing import Dict, Any, List, Optional
 
 from backend.app.config import settings
 from backend.app.database import get_db_connection
-from backend.app.scanners.asset_crawler import AssetCrawler
-from backend.app.scanners.vuln_detector import VulnerabilityDetector
-from backend.app.scanners.tamper_detector import TamperDetector
-from backend.app.scanners.sensitive_inspector import SensitiveInspector
 from backend.app.agent.verifier import FindingVerifier
-from backend.app.scanners.src_filter import apply_src_filter, get_src_stats
+from plugins.core.base import ScanContext
+from plugins.core.registry import scanner_registry
+
+# 预先加载插件
+scanner_registry.discover_scanners(['scanner_core', 'scanner_extensions'])
+from plugins.core.src_filter import apply_src_filter, get_src_stats
 from backend.app.agent.advisor import RemediationAdvisor
 
 logger = logging.getLogger("das_sentinel.orchestrator")
@@ -63,7 +64,7 @@ class InspectionOrchestrator:
         conn.close()
 
     async def run(self) -> Dict[str, Any]:
-        """执行端到端全量智能巡检闭环流程"""
+        """执行端到端全量智能巡检闭环流程 (已解耦)"""
         target_url = self.task_data["target_url"]
         auth_domains = json.loads(self.task_data["auth_domains"])
         scan_scope = json.loads(self.task_data["scan_scope"])
@@ -73,76 +74,104 @@ class InspectionOrchestrator:
         self._log_audit("TASK_START", target_url, f"启动巡检任务: {self.task_data['name']}")
 
         try:
-            # 阶段 1：站点资产与页面深度发现
-            self._update_task_status("RUNNING", 15, "正在执行站点资源发现与拓扑测绘 (Crawler)...")
-            crawler = AssetCrawler(
-                base_url=target_url,
+            from plugins.core.base import ScanContext
+            from plugins.core.registry import scanner_registry
+            
+            scanner_registry.discover_scanners(['plugins.scanner_core', 'plugins.scanner_extensions'])
+            
+            context = ScanContext(
+                task_id=self.task_id,
+                target_url=target_url,
                 auth_domains=auth_domains,
-                max_depth=scan_scope.get("max_depth", 3),
-                max_pages=scan_scope.get("max_pages", 50),
-                qps_limit=scan_scope.get("qps_limit", 5.0)
+                scan_scope=scan_scope
             )
-            crawl_results = await crawler.crawl()
-            crawled_pages = crawl_results["pages"]
-            logger.info(f"Crawl completed. Total pages discovered: {len(crawled_pages)}")
-            self._log_audit("RECON_PAGE", target_url, f"发现有效页面 {len(crawled_pages)} 个，外链 {len(crawl_results['external_links'])} 个")
+            
+            scanners_dict = {cls.__name__: cls for cls in scanner_registry.get_all_scanners()}
+            
+            # 阶段 1：资产发现
+            if 'AssetCrawler' in scanners_dict:
+                self._update_task_status("RUNNING", 15, "执行资产发现...")
+                crawler = scanners_dict['AssetCrawler'](
+                    base_url=target_url,
+                    auth_domains=auth_domains,
+                    max_depth=scan_scope.get("max_depth", 3),
+                    max_pages=scan_scope.get("max_pages", 50),
+                    qps_limit=scan_scope.get("qps_limit", 5.0)
+                )
+                await crawler.run(context)
+                
+            # 阶段 1.2：特殊链接提取与外链清洗 (link_processor 方向)
+            if 'SmartLinkExtractor' in scanners_dict:
+                link_ext = scanners_dict['SmartLinkExtractor']()
+                await link_ext.run(context)
+                
+            # 阶段 1.5：子资产扩展 (sub_assets 方向)
+            if 'SubAssetExpander' in scanners_dict:
+                self._update_task_status("RUNNING", 25, "执行子资产扩展...")
+                sub = scanners_dict['SubAssetExpander']()
+                await sub.run(context)
+                
+            # 阶段 2：漏洞探测 (scanner_core)
+            if 'VulnerabilityDetector' in scanners_dict:
+                self._update_task_status("RUNNING", 35, "执行漏洞探测...")
+                vuln = scanners_dict['VulnerabilityDetector'](target_url, auth_domains)
+                await vuln.run(context)
 
-            # 阶段 2：常见漏洞与弱配置检测 (包含抗误报基线、安全标头、Cookie、CORS、JS 秘钥、API 文档与参数探针)
-            self._update_task_status("RUNNING", 35, "正在编排开源工具检测配置缺陷、安全标头与参数探针 (Vuln Probe)...")
-            vuln_detector = VulnerabilityDetector(target_url, auth_domains)
-            vuln_findings = await vuln_detector.scan_all(crawled_pages, crawl_metadata=crawl_results)
+            # 阶段 2.2：REST API 接口轻量探针 (api_fuzzer 方向)
+            if 'RestApiProber' in scanners_dict:
+                api_prober = scanners_dict['RestApiProber']()
+                await api_prober.run(context)
+                
+            # 阶段 2.5：深度渗透
+            if 'DeepExploitEngine' in scanners_dict:
+                self._update_task_status("RUNNING", 50, "执行深度渗透...")
+                deep = scanners_dict['DeepExploitEngine']()
+                await deep.run(context)
+                
+            # 阶段 3 & 4：篡改和敏感数据
+            if 'TamperDetector' in scanners_dict:
+                self._update_task_status("RUNNING", 65, "执行篡改检测...")
+                tamper = scanners_dict['TamperDetector'](auth_domains)
+                await tamper.run(context)
+                
+            if 'SensitiveInspector' in scanners_dict:
+                self._update_task_status("RUNNING", 80, "执行敏感信息检测...")
+                sens = scanners_dict['SensitiveInspector'](custom_keywords=scan_scope.get('custom_sensitive_keywords', []))
+                await sens.run(context)
 
-            # 阶段 2.5：🔥 启动【专项深入测试与漏洞利用链闭环】(Deep Exploit & Chaining Engine)
-            if vuln_findings:
-                self._update_task_status("RUNNING", 50, f"发现 {len(vuln_findings)} 个潜在隐患，正在启动 SQL/LFI/SSTI/BOLA 专项深入渗透与利用链推演...")
-                from backend.app.scanners.deep_exploit_engine import DeepExploitEngine
-                vuln_findings = await DeepExploitEngine.run_specialized_deep_audit(vuln_findings)
-                self._log_audit("DEEP_AUDIT", target_url, f"完成对 {len(vuln_findings)} 项漏洞的专项深度利用验证与链式闭环组装")
+            all_raw_findings = context.findings
 
-            # 阶段 3：页面篡改、暗链与挂马脚本检测
-            self._update_task_status("RUNNING", 65, "正在执行页面完整性比对、暗链与恶意挂马脚本检测 (Tamper Engine)...")
-            tamper_detector = TamperDetector(auth_domains)
-            tamper_findings = tamper_detector.scan_pages(crawled_pages)
-
-            # 阶段 4：敏感信息与数据泄露深度检查 (覆盖 HTML 与 JS 脚本)
-            self._update_task_status("RUNNING", 80, "正在执行多模态敏感数据、个人隐私与凭证泄露检查 (Sensitive Inspector)...")
-            custom_keywords = scan_scope.get("custom_sensitive_keywords", [])
-            sensitive_inspector = SensitiveInspector(custom_keywords=custom_keywords)
-            sensitive_findings = sensitive_inspector.scan_pages(crawled_pages, js_scripts=crawl_results.get("js_scripts", []))
-
-            # 阶段 5：智能去重、关联验证、风险定级与架构拓扑指纹分析
+            # 智能体去重与指纹归纳
             self._update_task_status("RUNNING", 90, "正在执行智能体去重、技术栈拓扑指纹识别与风险定级归纳...")
-            all_raw_findings = vuln_findings + tamper_findings + sensitive_findings
-
-            # ────────────────────────────────────────────────────────────────────
-            # SRC 漏洞边界过滤：删除不符合 SRC 认定标准的低价值噪音
-            # 过滤内容：HTTP 安全头缺失 / 版本指纹 / Cookie 属性 / SRI 等 INFO 类
-            # ────────────────────────────────────────────────────────────────────
             all_raw_findings_pre_src = all_raw_findings.copy()
             all_raw_findings = apply_src_filter(all_raw_findings)
-            src_stats = get_src_stats(all_raw_findings_pre_src, all_raw_findings)
-            logger.info(
-                f"[SRC-Filter] Raw={src_stats['total_raw']} -> "
-                f"Eligible={src_stats['total_src_eligible']} "
-                f"(Filtered {src_stats['filtered_noise']} noise, rate={src_stats['filter_rate']})"
-            )
             deduped_findings = FindingVerifier.deduplicate_findings(all_raw_findings)
             
-            # 为每一条发现注入专家整改建议
             enriched_findings = [RemediationAdvisor.enhance_finding_advisory(f) for f in deduped_findings]
             
-            # 技术栈架构与拓扑指纹识别 (前端/后端/Web容器/数据库/安全防护)
-            from backend.app.scanners.fingerprint_detector import ArchitectureFingerprintDetector
-            architecture_info = ArchitectureFingerprintDetector.detect_architecture(target_url, crawled_pages, enriched_findings)
+            from plugins.scanner_extensions.sub_assets.fingerprint_detector import ArchitectureFingerprintDetector
+            architecture_info = ArchitectureFingerprintDetector.detect_architecture(
+                target_url,
+                context.crawled_pages,
+                enriched_findings
+            )
             
-            # 计算风险总览
             risk_summary = FindingVerifier.calculate_risk_summary(enriched_findings)
-            risk_summary["total_pages_scanned"] = len(crawled_pages)
-            risk_summary["total_assets_discovered"] = len(crawl_results["static_assets"])
-            risk_summary["total_external_links"] = len(crawl_results["external_links"])
+            risk_summary["total_pages_scanned"] = len(context.crawled_pages)
+            risk_summary["total_assets_discovered"] = len(context.static_assets)
+            risk_summary["total_external_links"] = len(context.external_links)
+            risk_summary["total_sub_assets"] = len(context.sub_assets)
+            risk_summary["sub_assets"] = context.sub_assets
+            risk_summary["topology_cluster"] = context.topology_cluster
             risk_summary["architecture"] = architecture_info
 
-            # 阶段 6：持久化入库与保存基线快照
+            crawl_results = {
+                "pages": context.crawled_pages,
+                "static_assets": context.static_assets,
+                "api_endpoints": context.api_endpoints,
+                "external_links": context.external_links,
+                "sub_assets": context.sub_assets
+            }
             self._save_findings_and_baseline(enriched_findings, crawl_results, risk_summary)
 
             self._update_task_status("COMPLETED", 100, "智能巡检闭环完成，报告已生成", summary=risk_summary)

@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 
 from backend.app.database import get_db_connection
 from backend.app.agent.orchestrator import InspectionOrchestrator
-from backend.app.scanners.tamper_detector import TamperDetector
+from plugins.scanner_core.tamper_detector import TamperDetector
 
 logger = logging.getLogger("das_sentinel.brain")
 

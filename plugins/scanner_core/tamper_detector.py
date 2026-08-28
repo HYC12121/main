@@ -1,3 +1,4 @@
+from plugins.core.base import BaseScanner, ScanContext
 import re
 import uuid
 import logging
@@ -7,7 +8,7 @@ from urllib.parse import urlparse
 
 logger = logging.getLogger("das_sentinel.tamper")
 
-class TamperDetector:
+class TamperDetector(BaseScanner):
     """页面篡改、暗链与恶意外链/挂马检测引擎"""
 
     def __init__(self, auth_domains: List[str]):
@@ -215,3 +216,8 @@ class TamperDetector:
                         "status": "OPEN"
                     })
         return findings
+
+    async def run(self, context: ScanContext) -> None:
+        self.auth_domains = context.auth_domains
+        findings = self.scan_pages(context.crawled_pages)
+        context.add_findings(findings)
