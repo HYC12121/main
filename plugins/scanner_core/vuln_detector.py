@@ -5,13 +5,22 @@ import logging
 import re
 import hashlib
 import json
+from html import escape as html_escape
 from typing import List, Dict, Any, Optional, Set
-from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
+from urllib.parse import urljoin, urlparse, parse_qs, parse_qsl, urlencode, urlunparse, urlsplit, urlunsplit
 import aiohttp
 from bs4 import BeautifulSoup
 from backend.app.config import settings
 
 logger = logging.getLogger("das_sentinel.vuln")
+
+
+def _with_query_param(url: str, name: str, value: str) -> str:
+    """Replace one query parameter without corrupting existing parameters."""
+    parts = urlsplit(url)
+    query = [(key, item) for key, item in parse_qsl(parts.query, keep_blank_values=True) if key != name]
+    query.append((name, value))
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), ""))
 
 try:
     from plugins.core.src_filter import is_src_noise
@@ -791,13 +800,19 @@ class VulnerabilityDetector(BaseScanner):
             param = item["param"]
             req_type = item["type"]
 
+            # Automatic probes stay read-only.  A POST form may create or
+            # mutate server-side state (stored XSS, comments, profiles, etc.),
+            # so it is not silently converted into an incorrect GET probe.
+            if req_type != "GET":
+                continue
+
             # =========================================================================
             # 1. 🔍 上下文感知 XSS 深度挖掘 (Context-Aware XSS + 真实 DOM 逃逸分析)
             # =========================================================================
             try:
                 # 阶段 1: 发送特征 Canary，分析反射上下文与过滤矩阵
                 canary_probe = 'das7<xss"\'/\\>'
-                test_url = f"{url}?{param}={canary_probe}" if req_type == "GET" else url
+                test_url = _with_query_param(url, param, canary_probe)
                 async with session.get(test_url, timeout=aiohttp.ClientTimeout(total=5.0), allow_redirects=False) as xss_resp:
                     if xss_resp.status == 200:
                         body = await xss_resp.text(errors="replace")
@@ -872,7 +887,7 @@ class VulnerabilityDetector(BaseScanner):
                     (r"ORA-01756|ORA-00933|ORA-00936", "Oracle SQL 错误"),
                     (r"Unclosed quotation mark before the character string", "SQL Server 未闭合引号")
                 ]
-                test_url = f"{url}?{param}=1'"
+                test_url = _with_query_param(url, param, "1'")
                 async with session.get(test_url, timeout=aiohttp.ClientTimeout(total=5.0), allow_redirects=False) as sql_resp:
                     body = await sql_resp.text(errors="replace")
                     for pat, desc in sql_error_patterns:
@@ -898,8 +913,8 @@ class VulnerabilityDetector(BaseScanner):
                             break
 
                 # 阶段 2: 布尔差分推演 (True: ' AND 4821=4821 -- vs False: ' AND 4821=4822 --)
-                true_url = f"{url}?{param}=1%27%20AND%204821=4821%20--%20"
-                false_url = f"{url}?{param}=1%27%20AND%204821=4822%20--%20"
+                true_url = _with_query_param(url, param, "1' AND 4821=4821 -- ")
+                false_url = _with_query_param(url, param, "1' AND 4821=4822 -- ")
                 async with session.get(true_url, timeout=aiohttp.ClientTimeout(total=5.0), allow_redirects=False) as true_resp:
                     true_status = true_resp.status
                     true_text = await true_resp.text(errors="replace")
@@ -936,13 +951,13 @@ class VulnerabilityDetector(BaseScanner):
                 try:
                     # 1. 测量正常基线响应耗时
                     t_base_start = pytime.time()
-                    async with session.get(f"{url}?{param}=1", timeout=aiohttp.ClientTimeout(total=4.0), allow_redirects=False) as base_resp:
+                    async with session.get(_with_query_param(url, param, "1"), timeout=aiohttp.ClientTimeout(total=4.0), allow_redirects=False) as base_resp:
                         await base_resp.text(errors="replace")
                     t_base = pytime.time() - t_base_start
 
                     # 2. 只有在基线响应较快（< 1.5s）时才执行时间盲注探测
                     if t_base < 1.5:
-                        time_probe_url = f"{url}?{param}=1%20AND%20SLEEP(2)"
+                        time_probe_url = _with_query_param(url, param, "1 AND SLEEP(2)")
                         t_start = pytime.time()
                         async with session.get(time_probe_url, timeout=aiohttp.ClientTimeout(total=6.0), allow_redirects=False) as time_resp:
                             await time_resp.text(errors="replace")
@@ -951,7 +966,7 @@ class VulnerabilityDetector(BaseScanner):
                             if (duration - t_base) >= 1.7:
                                 # 4. 二次复验：使用 SLEEP(0) 确认耗时回落至基线水准
                                 t_zero_start = pytime.time()
-                                async with session.get(f"{url}?{param}=1%20AND%20SLEEP(0)", timeout=aiohttp.ClientTimeout(total=4.0), allow_redirects=False) as zero_resp:
+                                async with session.get(_with_query_param(url, param, "1 AND SLEEP(0)"), timeout=aiohttp.ClientTimeout(total=4.0), allow_redirects=False) as zero_resp:
                                     await zero_resp.text(errors="replace")
                                     t_zero = pytime.time() - t_zero_start
                                 if t_zero < 1.5:
@@ -991,7 +1006,7 @@ class VulnerabilityDetector(BaseScanner):
             ]
             for lfi_payload, verify_regex, desc in lfi_vectors:
                 try:
-                    test_url = f"{url}?{param}={lfi_payload}"
+                    test_url = _with_query_param(url, param, lfi_payload)
                     async with session.get(test_url, timeout=aiohttp.ClientTimeout(total=5.0), allow_redirects=False) as lfi_resp:
                         if lfi_resp.status == 200:
                             lfi_body = await lfi_resp.text(errors="replace")
@@ -1033,14 +1048,14 @@ class VulnerabilityDetector(BaseScanner):
             ]
             for ssti_payload, expected_val, desc in ssti_vectors:
                 try:
-                    test_url = f"{url}?{param}={ssti_payload}"
+                    test_url = _with_query_param(url, param, ssti_payload)
                     async with session.get(test_url, timeout=aiohttp.ClientTimeout(total=5.0), allow_redirects=False) as ssti_resp:
                         if ssti_resp.status == 200:
                             ssti_body = await ssti_resp.text(errors="replace")
                             # 严格防误报：计算结果必须存在，且原始表达式没有原样回显，且不是作为 URL 参数字符串被反射
                             if expected_val in ssti_body and ssti_payload not in ssti_body and not self._is_false_positive_spa_response(ssti_body, ssti_resp.status):
                                 # 进一步做基线确认：确保 expected_val 不是页面原本就有的数字
-                                baseline_url = f"{url}?{param}=das_ssti_baseline_check"
+                                baseline_url = _with_query_param(url, param, "das_ssti_baseline_check")
                                 async with session.get(baseline_url, timeout=aiohttp.ClientTimeout(total=4.0), allow_redirects=False) as base_resp:
                                     base_body = await base_resp.text(errors="replace")
                                     if expected_val not in base_body:
@@ -1049,7 +1064,7 @@ class VulnerabilityDetector(BaseScanner):
                                         p4 = random.randint(331, 877)
                                         sec_expected = str(p3 * p4)
                                         sec_payload = ssti_payload.replace(str(p1), str(p3)).replace(str(p2), str(p4))
-                                        sec_url = f"{url}?{param}={sec_payload}"
+                                        sec_url = _with_query_param(url, param, sec_payload)
                                         async with session.get(sec_url, timeout=aiohttp.ClientTimeout(total=4.0), allow_redirects=False) as sec_resp:
                                             if sec_resp.status == 200:
                                                 sec_body = await sec_resp.text(errors="replace")
@@ -1095,17 +1110,20 @@ class VulnerabilityDetector(BaseScanner):
             ]
             for cmd_payload, marker, desc in cmd_vectors:
                 try:
-                    test_url = f"{url}?{param}={cmd_payload}"
+                    test_url = _with_query_param(url, param, cmd_payload)
                     async with session.get(test_url, timeout=aiohttp.ClientTimeout(total=5.0), allow_redirects=False) as cmd_resp:
                         if cmd_resp.status == 200:
                             cmd_body = await cmd_resp.text(errors="replace")
-                            is_reflection_only = False
-                            if "das_cmd_exec_8394" in cmd_payload:
-                                if f"url={cmd_payload}" in cmd_body or f'"{cmd_payload}"' in cmd_body or f"'{cmd_payload}'" in cmd_body or "window.location" in cmd_body:
-                                    is_reflection_only = True
+                            # A reflected command string is not command
+                            # execution.  Check the decoded and HTML-escaped
+                            # payload itself, not only a URL-tracking pattern.
+                            is_reflection_only = (
+                                cmd_payload in cmd_body
+                                or html_escape(cmd_payload, quote=True) in cmd_body
+                            )
                             
                             if marker in cmd_body and not is_reflection_only and not self._is_false_positive_spa_response(cmd_body, cmd_resp.status):
-                                baseline_url = f"{url}?{param}=das_cmd_baseline_check"
+                                baseline_url = _with_query_param(url, param, "das_cmd_baseline_check")
                                 async with session.get(baseline_url, timeout=aiohttp.ClientTimeout(total=4.0), allow_redirects=False) as base_resp:
                                     base_body = await base_resp.text(errors="replace")
                                     if marker not in base_body:
@@ -1142,7 +1160,7 @@ class VulnerabilityDetector(BaseScanner):
                 ]
                 for ssrf_url, markers, desc in ssrf_targets:
                     try:
-                        test_url = f"{url}?{param}={ssrf_url}"
+                        test_url = _with_query_param(url, param, ssrf_url)
                         async with session.get(test_url, timeout=aiohttp.ClientTimeout(total=5.0), allow_redirects=False) as ssrf_resp:
                             if ssrf_resp.status == 200:
                                 ssrf_body = await ssrf_resp.text(errors="replace")
@@ -1631,7 +1649,7 @@ class VulnerabilityDetector(BaseScanner):
                 if key in tested:
                     continue
                 tested.add(key)
-                probe = f"{ep}?{param}={evil}"
+                probe = _with_query_param(ep, param, evil)
                 try:
                     async with session.get(probe, allow_redirects=False,
                             timeout=_aiohttp.ClientTimeout(total=5.0)) as r:
@@ -1668,5 +1686,18 @@ class VulnerabilityDetector(BaseScanner):
     async def run(self, context: ScanContext) -> None:
         self.target_url = context.target_url
         self.auth_domains = context.auth_domains
-        findings = await self.scan_all(context.crawled_pages, crawl_metadata={'api_endpoints': context.api_endpoints, 'static_assets': context.static_assets})
+        # Preserve the discovery output needed by parameter/form probes.  The
+        # previous implementation only forwarded API/static assets, so every
+        # discovered GET form and query parameter was silently skipped and
+        # reflected XSS could never be tested in the end-to-end pipeline.
+        findings = await self.scan_all(
+            context.crawled_pages,
+            crawl_metadata={
+                'api_endpoints': context.api_endpoints,
+                'static_assets': context.static_assets,
+                'url_parameters': context.url_parameters,
+                'forms': context.forms,
+                'js_scripts': context.js_scripts,
+            },
+        )
         context.add_findings(findings)

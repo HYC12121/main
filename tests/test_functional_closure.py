@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import aiohttp
 import pytest
@@ -13,6 +14,7 @@ from backend.app.main import _mark_running_tasks_interrupted, _pending_task_ids,
 from backend.app.models.task import TaskCreateRequest
 from plugins.scanner_extensions.sub_assets.fingerprint_detector import ArchitectureFingerprintDetector
 from plugins.scanner_core.vuln_detector import VulnerabilityDetector
+from plugins.core.base import ScanContext
 
 
 def configure_temp_storage(monkeypatch, tmp_path):
@@ -81,6 +83,80 @@ async def test_source_code_probe_requires_code_signatures():
             target_url="https://admin:plain-secret@example.test",
             auth_domains=["example.test"],
         )
+
+
+@pytest.mark.anyio
+async def test_vulnerability_run_forwards_discovered_forms_and_parameters(monkeypatch):
+    """端到端编排必须把爬虫发现的表单/参数交给 XSS 等参数探针。"""
+    detector = VulnerabilityDetector("https://example.test", ["example.test"])
+    context = ScanContext(
+        task_id="param-forwarding",
+        target_url="https://example.test",
+        auth_domains=["example.test"],
+    )
+    context.forms = [{
+        "action": "https://example.test/",
+        "method": "GET",
+        "inputs": [{"name": "msg", "type": "text"}],
+    }]
+    context.url_parameters = [{
+        "endpoint": "https://example.test/search",
+        "params": ["q"],
+    }]
+    context.js_scripts = [{"url": "https://example.test/app.js", "content": ""}]
+    captured = {}
+
+    async def fake_scan_all(crawled_pages, crawl_metadata=None, progress_callback=None):
+        captured["pages"] = crawled_pages
+        captured["metadata"] = crawl_metadata
+        return []
+
+    monkeypatch.setattr(detector, "scan_all", fake_scan_all)
+    await detector.run(context)
+
+    assert captured["metadata"]["forms"] == context.forms
+    assert captured["metadata"]["url_parameters"] == context.url_parameters
+    assert captured["metadata"]["js_scripts"] == context.js_scripts
+
+
+@pytest.mark.anyio
+async def test_get_form_reflection_is_detected_as_xss_without_command_false_positive():
+    """GET 表单的未转义回显应命中 XSS，单纯回显命令字符串不能冒充命令执行。"""
+    class FakeResponse:
+        status = 200
+
+        def __init__(self, body):
+            self._body = body
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def text(self, errors="replace"):
+            return self._body
+
+    class ReflectionOnlySession:
+        def get(self, url, **kwargs):
+            value = parse_qs(urlparse(url).query, keep_blank_values=True).get("msg", [""])[0]
+            return FakeResponse(f"<html><body><p>{value}</p></body></html>")
+
+    detector = VulnerabilityDetector("https://example.test", ["example.test"])
+    findings = await detector._probe_parameter_vulnerabilities(
+        session=ReflectionOnlySession(),
+        url_parameters=[],
+        forms=[{
+            "action": "https://example.test/",
+            "method": "GET",
+            "inputs": [{"name": "msg", "type": "text"}],
+        }],
+        crawled_pages=[],
+    )
+
+    titles = [item["title"] for item in findings]
+    assert any("XSS" in title for title in titles)
+    assert not any("命令注入" in title for title in titles)
 
 
 def test_invalid_cron_is_rejected_before_registration():

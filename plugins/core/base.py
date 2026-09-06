@@ -13,6 +13,12 @@ class ScanContext:
     
     crawled_pages: List[Dict[str, Any]] = field(default_factory=list)
     js_scripts: List[Dict[str, Any]] = field(default_factory=list)
+    # Parameter and form discovery is produced by AssetCrawler and consumed by
+    # the active parameter vulnerability probes.  Keep these as first-class
+    # context fields so the orchestrator cannot silently drop them between
+    # discovery and detection stages.
+    url_parameters: List[Dict[str, Any]] = field(default_factory=list)
+    forms: List[Dict[str, Any]] = field(default_factory=list)
     external_links: List[str] = field(default_factory=list)
     static_assets: set = field(default_factory=set)
     api_endpoints: set = field(default_factory=set)

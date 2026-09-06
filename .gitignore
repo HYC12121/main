@@ -13,7 +13,13 @@ ENV/
 *.db
 *.sqlite3
 data/*.json
+data/reports/*.html
 !data/.gitkeep
+
+# Local secrets
+.env
+.env.*
+!.env.example
 
 # Pytest & Cache
 .pytest_cache/

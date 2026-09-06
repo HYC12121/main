@@ -396,5 +396,7 @@ class AssetCrawler(BaseScanner):
         context.crawled_pages = results.get('pages', [])
         context.external_links = results.get('external_links', [])
         context.js_scripts = results.get('js_scripts', [])
+        context.url_parameters = results.get('url_parameters', [])
+        context.forms = results.get('forms', [])
         context.static_assets = results.get('static_assets', set())
         context.api_endpoints = results.get('api_endpoints', set())
